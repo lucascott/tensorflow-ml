@@ -1,0 +1,8 @@
+optimizer
+activation func
+regularization
+dropout
+earlystop
+initialization
+stratification of data
+learning rate scheduler
