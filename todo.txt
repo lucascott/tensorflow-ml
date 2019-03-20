@@ -1,8 +1,10 @@
-optimizer
-activation func
-regularization
-dropout
+optimizer MOVED TO ADAM
+regularization TRIED (on loss and on dense layers)
+dropout DONE (to tune, good between 0.2)
 earlystop
 initialization
-stratification of data
-learning rate scheduler
+stratification of data DONE
+learning rate scheduler DONE (but simple)
+
+
+activation func SAME AS ALWAYS

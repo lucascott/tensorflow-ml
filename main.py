@@ -34,7 +34,7 @@ NUM_TEST_EXAMPLES = x_test.shape[0]
 
 n_epochs = 200
 batch_size = 256
-n_neurons_per_layer = [256, 128, 64]
+n_neurons_per_layer = [512, 256, 128]
 
 X = tf.placeholder(dtype=tf.float32, shape=(None, INPUTS), name="X")
 t = tf.placeholder(dtype=tf.float32, shape=(None, OUTPUTS), name="t")
@@ -46,7 +46,7 @@ for layer in range(1, len(n_neurons_per_layer)):
     hidden_layers.append(
         tf.layers.dropout(
             hidden_layers[-1],
-            rate=0.2,
+            rate=0. if layer < 2 else 0.1,
             noise_shape=None,
             seed=None,
             training=training,
