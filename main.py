@@ -40,13 +40,13 @@ X = tf.placeholder(dtype=tf.float32, shape=(None, INPUTS), name="X")
 t = tf.placeholder(dtype=tf.float32, shape=(None, OUTPUTS), name="t")
 training = tf.placeholder(tf.bool, name='training')
 learning_rate = tf.placeholder(tf.float32, name='lr')
-
+# regularizer = tf.contrib.layers.l2_regularizer(scale=0.001)
 hidden_layers = [tf.layers.dense(X, n_neurons_per_layer[0], activation=tf.nn.relu)]
 for layer in range(1, len(n_neurons_per_layer)):
     hidden_layers.append(
         tf.layers.dropout(
             hidden_layers[-1],
-            rate=0. if layer < 2 else 0.1,
+            rate=0.4 if layer < 2 else 0.2,
             noise_shape=None,
             seed=None,
             training=training,
@@ -57,6 +57,7 @@ for layer in range(1, len(n_neurons_per_layer)):
         tf.layers.dense(
             hidden_layers[-1], n_neurons_per_layer[layer],
             activation=tf.nn.relu,
+            # kernel_regularizer=regularizer,
             name=f'dense_{layer}'
         )
     )
@@ -70,8 +71,8 @@ cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=t, logits=net_
 
 # loss definition
 loss = tf.reduce_mean(cross_entropy, name="cost")
-# l2_loss = tf.losses.get_regularization_loss()
-# loss += l2_loss
+# reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+# loss += tf.add_n(reg_losses)
 
 train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 
@@ -93,7 +94,7 @@ with tf.Session() as sess:
             sess.run(train_step,
                      feed_dict={X: x_train[j * minibatch_size:(j + 1) * minibatch_size],
                                 t: t_train[j * minibatch_size:(j + 1) * minibatch_size],
-                                learning_rate: 0.01 if epoch <= 100 else 0.001,
+                                learning_rate: 0.01 if epoch <= 100 else 0.001 if epoch < 150 else 0.0001,
                                 training: True})
             val_loss = sess.run(loss, feed_dict={X: x_dev, t: t_dev, training: False})
             losses.append(val_loss)
