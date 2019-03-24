@@ -14,7 +14,6 @@ attributes = pd.read_csv(ATT_FILE)
 labels = pd.read_csv(LABEL_FILE)
 
 x_train, x_test, t_train, t_test = train_test_split(attributes, labels, test_size=1 - train_ratio, stratify=labels)
-
 x_dev, x_test, t_dev, t_test = train_test_split(x_test, t_test, test_size=0.5, stratify=t_test)
 
 print("x_train:", x_train.shape)
@@ -36,10 +35,13 @@ n_epochs = 200
 batch_size = 256
 n_neurons_per_layer = [512, 256, 128]
 
+# Defining placeholder for our data and labels.
 X = tf.placeholder(dtype=tf.float32, shape=(None, INPUTS), name="X")
 t = tf.placeholder(dtype=tf.float32, shape=(None, OUTPUTS), name="t")
+
 training = tf.placeholder(tf.bool, name='training')
 learning_rate = tf.placeholder(tf.float32, name='lr')
+
 # regularizer = tf.contrib.layers.l2_regularizer(scale=0.001)
 hidden_layers = [tf.layers.dense(X, n_neurons_per_layer[0], activation=tf.nn.relu)]
 for layer in range(1, len(n_neurons_per_layer)):

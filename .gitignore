@@ -6,3 +6,9 @@ gen
 
 # extra
 data
+.ipynb_checkpoints/
+.vscode/
+Median House Value classification DNN.ipynb
+models/
+tf_logs/
+tfg_dnn.py
