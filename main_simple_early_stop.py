@@ -31,10 +31,9 @@ NUM_TRAINING_EXAMPLES = x_train.shape[0]
 NUM_DEV_EXAMPLES = x_dev.shape[0]
 NUM_TEST_EXAMPLES = x_test.shape[0]
 
-n_epochs = 500
+n_epochs = 250
 batch_size = 256
-
-#n_neurons_per_layer = [512, 256, 128]
+n_neurons_per_layer = [512, 256, 128]
 
 # Defining placeholder for our data and labels.
 X = tf.placeholder(dtype=tf.float32, shape=(None, INPUTS), name="X")
@@ -47,55 +46,47 @@ learning_rate = tf.placeholder(tf.float32, name='lr')
 # 8 attributes
 n_inputs = INPUTS
 # Define neurons per layer
-n_hidden1 = 50
-n_hidden2 = 100
-n_hidden3 = 50
+n_hidden1 = 10
+n_hidden2 = 20
+n_hidden3 = 10
 # 10 different classes
 n_outputs = OUTPUTS
 
-activation = tf.nn.elu
-
-# Define dropout placeholder
-training = tf.placeholder_with_default(False, shape=(), name='training')
-dropout_rate = 0.2  # == 1 - keep_prob
-X_drop = tf.layers.dropout(X, dropout_rate, training=training)
-
+activation = tf.nn.leaky_relu
 # Define deep neural network 
 with tf.name_scope("dnn"):
     # We are goingt o use HE INITIALIZATION
-    he_init = tf.contrib.layers.variance_scaling_initializer()
+    #he_init = tf.contrib.layers.variance_scaling_initializer()
     # Utilizamos el método de Tensorflow tf.layers.dense ==> crea una red totalmemte conectada 
-    hidden1 = tf.layers.dense(X_drop, n_hidden1,kernel_initializer=he_init, activation=activation, name="hidden1")
-    hidden1_drop = tf.layers.dropout(hidden1, dropout_rate, training=training)
-
-    hidden2 = tf.layers.dense(hidden1_drop, n_hidden2, name="hidden2", activation=activation)
-    hidden2_drop = tf.layers.dropout(hidden2, dropout_rate, training=training)
-
-    hidden3 = tf.layers.dense(hidden2_drop, n_hidden3, name="hidden3", activation=activation)
-    hidden3_drop = tf.layers.dropout(hidden3, dropout_rate, training=training)
-
+    #hidden1 = tf.layers.dense(X, n_hidden1,kernel_initializer=he_init, activation=activation, name="hidden1")
+    hidden1 = tf.layers.dense(X, n_hidden1, activation=activation, name="hidden1")
+    hidden2 = tf.layers.dense(hidden1, n_hidden2, name="hidden2", activation=activation)
+    hidden3 = tf.layers.dense(hidden2, n_hidden3, name="hidden3", activation=activation)
     # Logits es el output de la red neuronal ANTES de pasar por la softmax activation function.
-    logits = tf.layers.dense(hidden3_drop, OUTPUTS, name="outputs")
+    logits = tf.layers.dense(hidden3, OUTPUTS, name="outputs")
     logits_summary = tf.summary.scalar('logits', logits)
 
 # Define our loss/cost function
 with tf.name_scope("cost"):
+    # This function is equivalent to applyiong the softmaz activation function and then computing the cross entropy, but it is more efficent, and it properly teakes care of corner cases:
+    ## When logits are large, floating-point rounding error may cause the softmax output to be exactly equal to 0 or 1, and in this case
+    ## the cross entropy equationwould contain a log(0) term, equal to negative infinity.
     y = tf.nn.softmax(logits=logits, name="y")
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=t, logits=logits)
     loss = tf.reduce_mean(cross_entropy, name="cost")
     loss_summary = tf.summary.scalar('log_loss', loss)
-
+ 
 # Define optimizer
 with tf.name_scope("train"):
-    initial_learning_rate = 0.15
+    initial_learning_rate = 0.1
     decay_steps = 10000
     decay_rate = 1/10
     global_step = tf.Variable(0, trainable=False, name="global_step")
     learning_rate = tf.train.exponential_decay(initial_learning_rate, global_step,
-                                                decay_steps, decay_rate)
-    # optimizer = tf.train.GradientDescentOptimizer(learning_rate) --> 0.3537182
+                                               decay_steps, decay_rate)
+    optimizer = tf.train.GradientDescentOptimizer(0.05) #--> 0.3537182
     # optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate,momentum=0.9) --> 0.34931508
-    optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_nesterov=True) #-->  0.38062623
+    #optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_nesterov=True) #-->  0.38062623
     # optimizer = tf.train.AdagradOptimizer(learning_rate=learning_rate) --> 0.31066537
     # optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate,momentum=0.9, decay=0.9, epsilon=1e-10) --> 0.099804305
     # optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate) --> 0.35567516
@@ -134,7 +125,7 @@ final_model_path = "/Users/robertollopcardenal/Desktop/developer/python/ml/deepl
 best_loss = np.infty
 #print(type(best_loss))
 epochs_without_progress = 0
-max_epochs_without_progress = 10
+max_epochs_without_progress = 5
 
 minibatch_size = 256
 with tf.Session() as sess:
@@ -163,22 +154,28 @@ with tf.Session() as sess:
             else:
                 # Sumamos de 5 en 5, porque estamos dentro del IF 
                 epochs_without_progress += 5
-                # Si después de 50 EPOCH, el error no ha disminuido "OVERFITTING" ==> EARLY STOPPING
+                # Si después de m"ax_epochs_without_progress", el error no ha disminuido "OVERFITTING" ==> EARLY STOPPING
                 if epochs_without_progress > max_epochs_without_progress:
                     print("Early stopping")
                     break
+
+            # accuracy_test = accuracy.eval(feed_dict={X: x_test, t: t_test})
+            # test_predictions = y.eval(feed_dict={X: x_test})
+            # test_correct_predictions = correct_predictions.eval(
+            # feed_dict={X: x_test, t: t_test})
+
 file_writer.close()
 os.remove(checkpoint_epoch_path)
 
-with tf.Session() as sess:
-    saver.restore(sess, final_model_path)
-    # accuracy_val = accuracy.eval(feed_dict={X: x_test, t: t_test})
-    # #correct_val = sess.run([correct], feed_dict={X: X_test, y: y_test})
-    # correct_val = correct_predictions.eval(feed_dict={X: x_test, t: t_test})
-    # print(correct_val)
-    # print(len(correct_val))
-    # correct_val = np.array([correct_val]).T
-    # y_test_aux = np.array([t_test]).T
+# with tf.Session() as sess:
+#     # saver.restore(sess, final_model_path)
+#     # accuracy_val = accuracy.eval(feed_dict={X: x_test, t: t_test})
+#     # #correct_val = sess.run([correct], feed_dict={X: X_test, y: y_test})
+#     # correct_val = correct_predictions.eval(feed_dict={X: x_test, t: t_test})
+#     # print(correct_val)
+#     # print(len(correct_val))
+#     # correct_val = np.array([correct_val]).T
+#     # y_test_aux = np.array([t_test]).T
 
     accuracy_test = accuracy.eval(feed_dict={X: x_test, t: t_test})
     test_predictions = y.eval(feed_dict={X: x_test})

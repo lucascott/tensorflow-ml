@@ -33,8 +33,7 @@ NUM_TEST_EXAMPLES = x_test.shape[0]
 
 n_epochs = 500
 batch_size = 256
-
-#n_neurons_per_layer = [512, 256, 128]
+n_neurons_per_layer = [512, 256, 128]
 
 # Defining placeholder for our data and labels.
 X = tf.placeholder(dtype=tf.float32, shape=(None, INPUTS), name="X")
@@ -80,25 +79,24 @@ with tf.name_scope("dnn"):
 
 # Define our loss/cost function
 with tf.name_scope("cost"):
+    # This function is equivalent to applyiong the softmaz activation function and then computing the cross entropy, but it is more efficent, and it properly teakes care of corner cases:
+    ## When logits are large, floating-point rounding error may cause the softmax output to be exactly equal to 0 or 1, and in this case
+    ## the cross entropy equationwould contain a log(0) term, equal to negative infinity.
     y = tf.nn.softmax(logits=logits, name="y")
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=t, logits=logits)
     loss = tf.reduce_mean(cross_entropy, name="cost")
     loss_summary = tf.summary.scalar('log_loss', loss)
-
+ 
 # Define optimizer
 with tf.name_scope("train"):
-    initial_learning_rate = 0.15
+    initial_learning_rate = 0.05
     decay_steps = 10000
-    decay_rate = 1/10
+    decay_rate = 1/20
     global_step = tf.Variable(0, trainable=False, name="global_step")
     learning_rate = tf.train.exponential_decay(initial_learning_rate, global_step,
-                                                decay_steps, decay_rate)
-    # optimizer = tf.train.GradientDescentOptimizer(learning_rate) --> 0.3537182
-    # optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate,momentum=0.9) --> 0.34931508
-    optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_nesterov=True) #-->  0.38062623
-    # optimizer = tf.train.AdagradOptimizer(learning_rate=learning_rate) --> 0.31066537
-    # optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate,momentum=0.9, decay=0.9, epsilon=1e-10) --> 0.099804305
-    # optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate) --> 0.35567516
+                                               decay_steps, decay_rate)
+                                               
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate) #--> 0.35567516
 
     train_step = optimizer.minimize(loss, global_step=global_step)
 
@@ -134,7 +132,7 @@ final_model_path = "/Users/robertollopcardenal/Desktop/developer/python/ml/deepl
 best_loss = np.infty
 #print(type(best_loss))
 epochs_without_progress = 0
-max_epochs_without_progress = 10
+max_epochs_without_progress = 50
 
 minibatch_size = 256
 with tf.Session() as sess:
@@ -163,27 +161,32 @@ with tf.Session() as sess:
             else:
                 # Sumamos de 5 en 5, porque estamos dentro del IF 
                 epochs_without_progress += 5
-                # Si después de 50 EPOCH, el error no ha disminuido "OVERFITTING" ==> EARLY STOPPING
+                # Si después de m"ax_epochs_without_progress", el error no ha disminuido "OVERFITTING" ==> EARLY STOPPING
                 if epochs_without_progress > max_epochs_without_progress:
                     print("Early stopping")
                     break
+            accuracy_test = accuracy.eval(feed_dict={X: x_test, t: t_test})
+            test_predictions = y.eval(feed_dict={X: x_test})
+            test_correct_predictions = correct_predictions.eval(
+            feed_dict={X: x_test, t: t_test})
+
 file_writer.close()
-os.remove(checkpoint_epoch_path)
+#os.remove(checkpoint_epoch_path)
 
-with tf.Session() as sess:
-    saver.restore(sess, final_model_path)
-    # accuracy_val = accuracy.eval(feed_dict={X: x_test, t: t_test})
-    # #correct_val = sess.run([correct], feed_dict={X: X_test, y: y_test})
-    # correct_val = correct_predictions.eval(feed_dict={X: x_test, t: t_test})
-    # print(correct_val)
-    # print(len(correct_val))
-    # correct_val = np.array([correct_val]).T
-    # y_test_aux = np.array([t_test]).T
+# with tf.Session() as sess:
+#     # saver.restore(sess, final_model_path)
+#     # accuracy_val = accuracy.eval(feed_dict={X: x_test, t: t_test})
+#     # #correct_val = sess.run([correct], feed_dict={X: X_test, y: y_test})
+#     # correct_val = correct_predictions.eval(feed_dict={X: x_test, t: t_test})
+#     # print(correct_val)
+#     # print(len(correct_val))
+#     # correct_val = np.array([correct_val]).T
+#     # y_test_aux = np.array([t_test]).T
 
-    accuracy_test = accuracy.eval(feed_dict={X: x_test, t: t_test})
-    test_predictions = y.eval(feed_dict={X: x_test})
-    test_correct_predictions = correct_predictions.eval(
-        feed_dict={X: x_test, t: t_test})
+    # accuracy_test = accuracy.eval(feed_dict={X: x_test, t: t_test})
+    # test_predictions = y.eval(feed_dict={X: x_test})
+    # test_correct_predictions = correct_predictions.eval(
+    #     feed_dict={X: x_test, t: t_test})
 
 
 print("Accuracy for the TEST set: " + str(accuracy_test))
